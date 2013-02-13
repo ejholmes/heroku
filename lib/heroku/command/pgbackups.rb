@@ -71,7 +71,18 @@ module Heroku::Command
     # -e, --expire  # if no slots are available, destroy the oldest manual backup to make room
     #
     def capture
-      attachment = hpg_resolve(shift_argument, "DATABASE_URL")
+      database = shift_argument || "DATABASE_URL"
+      attachment = hpg_databases[database]
+
+      if attachment
+        attachment = hpg_resolve(database)
+      else
+        url = config_vars[database]
+        error("Your app has no databases.") unless url
+        error("#{database} is not a postgres database") unless URI.parse(url).scheme =~ /postgres(ql)?/
+        attachment = Struct.new(:display_name, :url).new(database, url)
+      end
+
       validate_arguments!
 
       from_name = attachment.display_name
